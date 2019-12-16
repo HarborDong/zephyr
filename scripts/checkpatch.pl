@@ -343,7 +343,6 @@ our $Ident	= qr{
 our $Storage	= qr{extern|static|asmlinkage};
 our $Sparse	= qr{
 			__user|
-			__kernel|
 			__force|
 			__iomem|
 			__must_check|
@@ -385,8 +384,7 @@ our $Attribute	= qr{
 			____cacheline_aligned_in_smp|
 			____cacheline_internodealigned_in_smp|
 			__weak|
-			__syscall|
-			__syscall_inline
+			__syscall
 		  }x;
 our $Modifier;
 our $Inline	= qr{inline|__always_inline|noinline|__inline|__inline__};
@@ -1017,9 +1015,9 @@ sub top_of_kernel_tree {
 	my ($root) = @_;
 
 	my @tree_check = (
-		"COPYING", "CREDITS", "Kbuild", "Makefile",
-		"README", "Documentation", "arch", "include", "drivers",
-		"fs", "init", "ipc", "kernel", "lib", "scripts",
+		"LICENSE", "CODEOWNERS", "Kconfig", "Makefile",
+		"README.rst", "doc", "arch", "include", "drivers",
+		"boards", "kernel", "lib", "scripts",
 	);
 
 	foreach my $check (@tree_check) {
@@ -2861,7 +2859,7 @@ sub process {
 
 			my @compats = $rawline =~ /\"([a-zA-Z0-9\-\,\.\+_]+)\"/g;
 
-			my $dt_path = $root . "/Documentation/devicetree/bindings/";
+			my $dt_path = $root . "/dts/bindings/";
 			my $vp_file = $dt_path . "vendor-prefixes.txt";
 
 			foreach my $compat (@compats) {

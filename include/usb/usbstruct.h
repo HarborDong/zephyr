@@ -33,8 +33,8 @@
  * This file contains structures and defines of the standard USB packets
  */
 
-#ifndef _USBSTRUCT_H_
-#define _USBSTRUCT_H_
+#ifndef ZEPHYR_INCLUDE_USB_USBSTRUCT_H_
+#define ZEPHYR_INCLUDE_USB_USBSTRUCT_H_
 
 #define REQTYPE_GET_DIR(x)          (((x)>>7)&0x01)
 #define REQTYPE_GET_TYPE(x)         (((x)>>5)&0x03)
@@ -71,6 +71,9 @@
 #define FEA_REMOTE_WAKEUP           0x01
 #define FEA_TEST_MODE               0x02
 
+#define DEVICE_STATUS_SELF_POWERED  0x01
+#define DEVICE_STATUS_REMOTE_WAKEUP 0x02
+
 /*
  *  USB descriptors
  */
@@ -81,19 +84,7 @@ struct usb_desc_header {
 	u8_t bDescriptorType;       /**< descriptor type */
 };
 
-#define DESC_DEVICE                 1
-#define DESC_CONFIGURATION          2
-#define DESC_STRING                 3
-#define DESC_INTERFACE              4
-#define DESC_ENDPOINT               5
-#define DESC_DEVICE_QUALIFIER       6
-#define DESC_OTHER_SPEED            7
-#define DESC_INTERFACE_POWER        8
-
-#define CS_INTERFACE                0x24
-#define CS_ENDPOINT                 0x25
-
 #define GET_DESC_TYPE(x)            (((x)>>8)&0xFF)
 #define GET_DESC_INDEX(x)           ((x)&0xFF)
 
-#endif /* _USBSTRUCT_H_ */
+#endif /* ZEPHYR_INCLUDE_USB_USBSTRUCT_H_ */

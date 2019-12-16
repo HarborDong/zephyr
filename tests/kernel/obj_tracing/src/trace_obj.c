@@ -13,7 +13,6 @@ enum obj_name {
 	MEM_SLAB,
 	SEM,
 	MUTEX,
-	ALERT,
 	STACK,
 	MSGQ,
 	MBOX,
@@ -30,16 +29,10 @@ static inline void stop_dummy_fn(struct k_timer *timer)
 	ARG_UNUSED(timer);
 }
 
-static inline void alert_handler_dummy(struct k_alert *alert)
-{
-	ARG_UNUSED(alert);
-}
-
 K_TIMER_DEFINE(ktimer, expiry_dummy_fn, stop_dummy_fn);
-K_MEM_SLAB_DEFINE(kmslab, 4, 2, 4);
+K_MEM_SLAB_DEFINE(kmslab, 8, 2, 8);
 K_SEM_DEFINE(ksema, 0, 1);
 K_MUTEX_DEFINE(kmutex);
-K_ALERT_DEFINE(kalert, alert_handler_dummy, 1);
 K_STACK_DEFINE(kstack, 512);
 K_MSGQ_DEFINE(kmsgq, 4, 2, 4);
 K_MBOX_DEFINE(kmbox);
@@ -50,18 +43,17 @@ static struct k_timer timer;
 static struct k_mem_slab mslab;
 static struct k_sem sema;
 static struct k_mutex mutex;
-static struct k_alert alert;
 static struct k_stack stack;
 static struct k_msgq msgq;
 static struct k_mbox mbox;
 static struct k_pipe pipe;
 static struct k_queue queue;
 
-#define BLOCK_SIZE 4
+#define BLOCK_SIZE 8
 #define NUM_BLOCKS 4
 
-static char slab[BLOCK_SIZE * NUM_BLOCKS];
-static u32_t sdata[BLOCK_SIZE * NUM_BLOCKS];
+static char __aligned(8) slab[BLOCK_SIZE * NUM_BLOCKS];
+static stack_data_t sdata[BLOCK_SIZE * NUM_BLOCKS];
 static char buffer[BLOCK_SIZE * NUM_BLOCKS];
 static char data[] = "test";
 
@@ -81,10 +73,6 @@ static void get_obj_count(int obj_type)
 			 */
 			if (obj_list == &ktimer || obj_list == &timer) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found timer objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_timer, k_timer,
 						    obj_list);
@@ -98,10 +86,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kmslab || obj_list == &mslab) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found memory slab objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_mem_slab,
 						    k_mem_slab, obj_list);
@@ -115,10 +99,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &ksema || obj_list == &sema) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found semaphore objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_sem, k_sem,
 						    obj_list);
@@ -132,32 +112,11 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kmutex || obj_list == &mutex) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found mutex objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_mutex, k_mutex,
 						    obj_list);
 		}
 		zassert_equal(obj_found, 2, "Didn't find mutex objects");
-		break;
-	case ALERT:
-		k_alert_init(&alert, K_ALERT_IGNORE, 1);
-
-		obj_list = SYS_TRACING_HEAD(struct k_alert, k_alert);
-		while (obj_list != NULL) {
-			if (obj_list == &kalert || obj_list == &alert) {
-				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found alert objects\n");
-					break;
-				}
-			}
-			obj_list = SYS_TRACING_NEXT(struct k_alert, k_alert,
-						    obj_list);
-		}
-		zassert_equal(obj_found, 2, "Didn't find alert objects");
 		break;
 	case STACK:
 		k_stack_init(&stack, sdata, NUM_BLOCKS);
@@ -166,10 +125,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kstack || obj_list == &stack) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found stack objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_stack, k_stack,
 						    obj_list);
@@ -183,10 +138,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kmsgq || obj_list == &msgq) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found message queue objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_msgq, k_msgq,
 						    obj_list);
@@ -200,10 +151,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kmbox || obj_list == &mbox) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found mail box objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_mbox, k_mbox,
 						    obj_list);
@@ -217,10 +164,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kpipe || obj_list == &pipe) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found pipe objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_pipe, k_pipe,
 						    obj_list);
@@ -234,10 +177,6 @@ static void get_obj_count(int obj_type)
 		while (obj_list != NULL) {
 			if (obj_list == &kqueue || obj_list == &queue) {
 				obj_found++;
-				if (obj_found == 2) {
-					TC_PRINT("Found queue objects\n");
-					break;
-				}
 			}
 			obj_list = SYS_TRACING_NEXT(struct k_queue, k_queue,
 						    obj_list);
@@ -251,9 +190,8 @@ static void get_obj_count(int obj_type)
 
 /**
  * @brief Verify tracing of kernel objects
- * @details Statically create kernel objects
- * and check if they are added to trace object
- * list with object tracing enabled.
+ * @details Statically create kernel objects and check if they are added to
+ *          trace object list with object tracing enabled.
  * @ingroup kernel_objtracing_tests
  * @see SYS_TRACING_HEAD(), SYS_TRACING_NEXT()
  */

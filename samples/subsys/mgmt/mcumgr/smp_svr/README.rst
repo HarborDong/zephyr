@@ -8,7 +8,7 @@ Overview
 
 This sample application implements a Simple Management Protocol (SMP) server.
 SMP is a basic transfer encoding for use with the MCUmgr management protocol.
-For more information about MCUmgr and SMP, please see :ref:`mgmt`.
+For more information about MCUmgr and SMP, please see :ref:`device_mgmt`.
 
 This sample application supports the following mcumgr transports by default:
 
@@ -25,7 +25,7 @@ This sample application supports the following mcumgr transports by default:
 Caveats
 *******
 
-* The Zephyr port of `smp_svr` is configured to run on a Nordic nRF52x MCU. The
+* The Zephyr port of ``smp_svr`` is configured to run on a Nordic nRF52x MCU. The
   application should build and run for other platforms without modification, but
   the file system management commands will not work.  To enable file system
   management for a different platform, adjust the
@@ -185,10 +185,10 @@ swapped into slot-0 by MCUboot.
 Build a second sample
 ---------------------
 
-Perhaps the easiest sample to test with is the :file:`samples/hello_world`
+Perhaps the easiest sample to test with is the :zephyr_file:`samples/hello_world`
 sample provided by Zephyr, documented in the :ref:`hello_world` section.
 
-Edit :file:`samples/hello_world/prj.conf` and enable the required MCUboot
+Edit :zephyr_file:`samples/hello_world/prj.conf` and enable the required MCUboot
 Kconfig option as described in :ref:`mcuboot` by adding the following line to
 it:
 
@@ -281,4 +281,3 @@ new image and make the swap permanent by using this command:
 Note that if you try to send the very same image that is already flashed in
 slot-0 then the procedure will not complete successfully since the hash values
 for both slots will be identical.
-

@@ -7,8 +7,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-#ifndef __BT_MESH_PROXY_H
-#define __BT_MESH_PROXY_H
+#ifndef ZEPHYR_INCLUDE_BLUETOOTH_MESH_PROXY_H_
+#define ZEPHYR_INCLUDE_BLUETOOTH_MESH_PROXY_H_
 
 /**
  * @brief Bluetooth Mesh Proxy
@@ -17,19 +17,26 @@
  * @{
  */
 
-/**
- * @brief Enable advertising with Node Identity.
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/** @brief Enable advertising with Node Identity.
  *
- * This API requires that GATT Proxy support has been enabled. Once called
- * each subnet will start advertising using Node Identity for the next
- * 60 seconds.
+ *  This API requires that GATT Proxy support has been enabled. Once called
+ *  each subnet will start advertising using Node Identity for the next
+ *  60 seconds.
  *
- * @return 0 on success, or (negative) error code on failure.
+ *  @return 0 on success, or (negative) error code on failure.
  */
 int bt_mesh_proxy_identity_enable(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 /**
  * @}
  */
 
-#endif /* __BT_MESH_PROXY_H */
+#endif /* ZEPHYR_INCLUDE_BLUETOOTH_MESH_PROXY_H_ */

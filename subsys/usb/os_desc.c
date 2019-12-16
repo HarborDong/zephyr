@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_USB_DEVICE_LEVEL
-#define SYS_LOG_DOMAIN "usb/osdesc"
-#include <logging/sys_log.h>
+#define LOG_LEVEL CONFIG_USB_DEVICE_LOG_LEVEL
+#include <logging/log.h>
+LOG_MODULE_REGISTER(usb_os_desc);
 
 #include <zephyr.h>
 
 #include <usb/usb_device.h>
+#include <usb/usb_common.h>
 #include <os_desc.h>
 
 static struct usb_os_descriptor *os_desc;
@@ -18,15 +19,13 @@ static struct usb_os_descriptor *os_desc;
 int usb_handle_os_desc(struct usb_setup_packet *setup,
 		       s32_t *len, u8_t **data)
 {
-	SYS_LOG_DBG("wValue 0x%x", setup->wValue);
-
 	if (!os_desc) {
 		return -ENOTSUP;
 	}
 
-	if (GET_DESC_TYPE(setup->wValue) == DESC_STRING &&
+	if (GET_DESC_TYPE(setup->wValue) == USB_STRING_DESC &&
 	    GET_DESC_INDEX(setup->wValue) == USB_OSDESC_STRING_DESC_INDEX) {
-		SYS_LOG_DBG("MS OS Descriptor string read");
+		LOG_DBG("MS OS Descriptor string read");
 		*data = os_desc->string;
 		*len = os_desc->string_len;
 
@@ -39,7 +38,7 @@ int usb_handle_os_desc(struct usb_setup_packet *setup,
 int usb_handle_os_desc_feature(struct usb_setup_packet *setup,
 			       s32_t *len, u8_t **data)
 {
-	SYS_LOG_DBG("bRequest 0x%x", setup->bRequest);
+	LOG_DBG("bRequest 0x%x", setup->bRequest);
 
 	if (!os_desc) {
 		return -ENOTSUP;
@@ -48,7 +47,7 @@ int usb_handle_os_desc_feature(struct usb_setup_packet *setup,
 	if (setup->bRequest == os_desc->vendor_code) {
 		switch (setup->wIndex) {
 		case USB_OSDESC_EXTENDED_COMPAT_ID:
-			SYS_LOG_DBG("Handle Compat ID");
+			LOG_DBG("Handle Compat ID");
 			*data = os_desc->compat_id;
 			*len = os_desc->compat_id_len;
 

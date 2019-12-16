@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __NET_TIMEOUT_H
-#define __NET_TIMEOUT_H
+#ifndef ZEPHYR_INCLUDE_NET_NET_TIMEOUT_H_
+#define ZEPHYR_INCLUDE_NET_NET_TIMEOUT_H_
 
 /**
  * @brief Network long timeout primitives and helpers
@@ -28,11 +28,12 @@
 extern "C" {
 #endif
 
-/* Let the max timeout be 100 ms lower because of
+/** Let the max timeout be 100 ms lower because of
  * possible rounding in delayed work implementation.
  */
 #define NET_TIMEOUT_MAX_VALUE ((u32_t)(INT32_MAX - 100))
 
+/** Generic struct for handling network timeouts */
 struct net_timeout {
 	/** Used to track timers */
 	sys_snode_t node;
@@ -63,4 +64,4 @@ struct net_timeout {
  */
 
 
-#endif /* __NET_TIMEOUT_H */
+#endif /* ZEPHYR_INCLUDE_NET_NET_TIMEOUT_H_ */

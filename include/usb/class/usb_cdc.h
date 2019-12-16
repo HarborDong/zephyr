@@ -18,8 +18,8 @@
  * Header is limited to ACM and ECM Subclasses.
  */
 
-#ifndef __USB_CDC_H__
-#define __USB_CDC_H__
+#ifndef ZEPHYR_INCLUDE_USB_CLASS_USB_CDC_H_
+#define ZEPHYR_INCLUDE_USB_CLASS_USB_CDC_H_
 
 /** CDC Specification release number in BCD format */
 #define CDC_SRN_1_20			0x0120
@@ -38,13 +38,6 @@
  * @note CDC120-20101103-track.pdf, 4.5, Table 6
  */
 #define DATA_INTERFACE_CLASS		0x0A
-
-/**
- * @brief Values for the bDescriptorType Field
- * @note CDC120-20101103-track.pdf, 5.2.3, Table 12
- */
-#define CS_INTERFACE			0x24
-#define CS_ENDPOINT			0x25
 
 /**
  * @brief bDescriptor SubType for Communications
@@ -72,11 +65,21 @@
 #define SET_CONTROL_LINE_STATE_RTS	0x02
 #define SET_CONTROL_LINE_STATE_DTR	0x01
 
+/** Enhance enum uart_line_ctrl with CDC specific values */
+#define USB_CDC_LINE_CTRL_BAUD_RATE	UART_LINE_CTRL_BAUD_RATE
+#define USB_CDC_LINE_CTRL_DCD		UART_LINE_CTRL_DCD
+#define USB_CDC_LINE_CTRL_DSR		UART_LINE_CTRL_DSR
+#define USB_CDC_LINE_CTRL_BREAK		BIT(5)
+#define USB_CDC_LINE_CTRL_RING_SIGNAL	BIT(6)
+#define USB_CDC_LINE_CTRL_FRAMING	BIT(7)
+#define USB_CDC_LINE_CTRL_PARITY	BIT(8)
+#define USB_CDC_LINE_CTRL_OVER_RUN	BIT(9)
+
 /** UART State Bitmap Values */
-#define SERIAL_STATE_OVERRUN		0x40
+#define SERIAL_STATE_OVER_RUN		0x40
 #define SERIAL_STATE_PARITY		0x20
 #define SERIAL_STATE_FRAMING		0x10
-#define SERIAL_STATE_RING		0x08
+#define SERIAL_STATE_RING_SIGNAL	0x08
 #define SERIAL_STATE_BREAK		0x04
 #define SERIAL_STATE_TX_CARRIER		0x02
 #define SERIAL_STATE_RX_CARRIER		0x01
@@ -162,4 +165,4 @@ struct cdc_ecm_descriptor {
 	u8_t bNumberPowerFilters;
 } __packed;
 
-#endif /* __USB_CDC_H__ */
+#endif /* ZEPHYR_INCLUDE_USB_CLASS_USB_CDC_H_ */

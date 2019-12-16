@@ -3,6 +3,7 @@
  *
  * Copyright(c) 2015,2016 Intel Corporation.
  * Copyright(c) 2017 PHYTEC Messtechnik GmbH
+ * Copyright(c) 2018 Nordic Semiconductor ASA
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,10 +42,10 @@
 
 #include <version.h>
 
-#ifndef USB_COMMON_H_
-#define USB_COMMON_H_
+#ifndef ZEPHYR_INCLUDE_USB_USB_COMMON_H_
+#define ZEPHYR_INCLUDE_USB_USB_COMMON_H_
 
-#define BCD(x) ((((x) / 10) << 4) | ((x) / 10))
+#define BCD(x) ((((x) / 10) << 4) | ((x) % 10))
 
 /* Descriptor size in bytes */
 #define USB_DEVICE_DESC_SIZE		18
@@ -64,10 +65,14 @@
 #define USB_INTERFACE_DESC		0x04
 #define USB_ENDPOINT_DESC		0x05
 #define USB_DEVICE_QUAL_DESC		0x06
+#define USB_OTHER_SPEED			0x07
+#define USB_INTERFACE_POWER		0x08
 #define USB_INTERFACE_ASSOC_DESC	0x0B
 #define USB_DEVICE_CAPABILITY_DESC	0x10
 #define USB_HID_DESC			0x21
 #define USB_HID_REPORT_DESC		0x22
+#define USB_CS_INTERFACE_DESC		0x24
+#define USB_CS_ENDPOINT_DESC		0x25
 #define USB_DFU_FUNCTIONAL_DESC		0x21
 #define USB_ASSOCIATION_DESC		0x0B
 #define USB_BINARY_OBJECT_STORE_DESC	0x0F
@@ -86,13 +91,19 @@
 #define MAX_LOW_POWER			0x32
 #define MAX_HIGH_POWER			0xFA
 
+/* Highest value of Frame Number in SOF packets. */
+#define USB_SOF_MAX			2047
+
 /* bmAttributes:
  * D7:Reserved, always 1,
  * D6:Self-Powered -> 1,
  * D5:Remote Wakeup -> 0,
  * D4...0:Reserved -> 0
  */
-#define USB_CONFIGURATION_ATTRIBUTES	0xC0
+#define USB_CONFIGURATION_ATTRIBUTES_REMOTE_WAKEUP  0x20
+#define USB_CONFIGURATION_ATTRIBUTES                0xC0       \
+	| (COND_CODE_1(CONFIG_USB_DEVICE_REMOTE_WAKEUP,        \
+	   (USB_CONFIGURATION_ATTRIBUTES_REMOTE_WAKEUP), (0)))
 
 /* Classes */
 #define COMMUNICATION_DEVICE_CLASS	0x02
@@ -198,4 +209,4 @@ struct usb_ep_descriptor {
 	u8_t bInterval;
 } __packed;
 
-#endif /* USB_COMMON_H_ */
+#endif /* ZEPHYR_INCLUDE_USB_USB_COMMON_H_ */

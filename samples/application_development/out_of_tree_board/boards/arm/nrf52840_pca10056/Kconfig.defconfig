@@ -1,7 +1,6 @@
-# Kconfig - nRF52 PCA10040 board configuration
-#
+# nRF52 PCA10040 board configuration
+
 # Copyright (c) 2016 Nordic Semiconductor ASA
-#
 # SPDX-License-Identifier: Apache-2.0
 
 if BOARD_NRF52840_PCA10056
@@ -11,11 +10,11 @@ config BOARD
 
 if USB
 
-config USB_NRF52840
-	def_bool y
+config USB_NRFX
+	default y
 
 config USB_DEVICE_STACK
-	def_bool y
+	default y
 
 endif # USB
 

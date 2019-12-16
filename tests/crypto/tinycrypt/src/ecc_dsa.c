@@ -65,7 +65,8 @@
 #include <tinycrypt/constants.h>
 #include <tinycrypt/sha256.h>
 #include <test_utils.h>
-#include <test_ecc_utils.h>
+#include "test_ecc_utils.h"
+#include <sys/util.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,12 +105,12 @@ int sign_vectors(TCSha256State_t hash, char **d_vec, char **k_vec,
 		uECC_vli_nativeToBytes(private_bytes, NUM_ECC_BYTES, private);
 
 		/* validate ECDSA: hash message, sign digest, check r+s */
-		memset(k, 0, NUM_ECC_BYTES);
+		(void)memset(k, 0, NUM_ECC_BYTES);
 		string2scalar(k, NUM_ECC_WORDS, k_vec[i]);
 		string2scalar(exp_r, NUM_ECC_WORDS, r_vec[i]);
 		string2scalar(exp_s, NUM_ECC_WORDS, s_vec[i]);
 
-		msglen = hex2bin(msg, BUF_SIZE, msg_vec[i], strlen(msg_vec[i]));
+		msglen = hex2bin(msg_vec[i], strlen(msg_vec[i]), msg, BUF_SIZE);
 
 		/**TESTPOINT: Check if msg imported*/
 		zassert_true(msglen, "failed to import message!");
@@ -125,7 +126,7 @@ int sign_vectors(TCSha256State_t hash, char **d_vec, char **k_vec,
 			hash_dwords = NUM_ECC_WORDS;
 		}
 
-		memset(digest, 0, NUM_ECC_BYTES - 4 * hash_dwords);
+		(void)memset(digest, 0, NUM_ECC_BYTES - 4 * hash_dwords);
 		uECC_vli_bytesToNative(digest + (NUM_ECC_WORDS - hash_dwords),
 				       digest_bytes, TC_SHA256_DIGEST_SIZE);
 
@@ -366,7 +367,7 @@ int vrfy_vectors(TCSha256State_t hash, char **msg_vec, char **qx_vec, char **qy_
 		exp_rc = res_vec[i];
 
 		/* validate ECDSA: hash message, verify r+s */
-		msglen = hex2bin(msg, BUF_SIZE, msg_vec[i], strlen(msg_vec[i]));
+		msglen = hex2bin(msg_vec[i], strlen(msg_vec[i]), msg, BUF_SIZE);
 
 		/**TESTPOINT: Check if msg imported*/
 		zassert_true(msglen, "failed to import message!");
@@ -382,7 +383,7 @@ int vrfy_vectors(TCSha256State_t hash, char **msg_vec, char **qx_vec, char **qy_
 			hash_dwords = NUM_ECC_WORDS;
 		}
 
-		memset(digest, 0, NUM_ECC_BYTES - 4 * hash_dwords);
+		(void)memset(digest, 0, NUM_ECC_BYTES - 4 * hash_dwords);
 		uECC_vli_bytesToNative(digest + (NUM_ECC_WORDS - hash_dwords), digest_bytes,
 				       TC_SHA256_DIGEST_SIZE);
 

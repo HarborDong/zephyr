@@ -33,11 +33,12 @@
  * This file contains the USB device core layer APIs and structures.
  */
 
-#ifndef USB_DEVICE_H_
-#define USB_DEVICE_H_
+#ifndef ZEPHYR_INCLUDE_USB_USB_DEVICE_H_
+#define ZEPHYR_INCLUDE_USB_USB_DEVICE_H_
 
 #include <drivers/usb/usb_dc.h>
 #include <usb/usbstruct.h>
+#include <logging/log.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,30 +49,33 @@ extern "C" {
  * in predetermined order in the RAM.
  */
 #define USBD_DEVICE_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 0) __used
-#define USBD_CLASS_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 1) __used
+	static __in_section(usb, descriptor_##p, 0) __used __aligned(1)
+#define USBD_CLASS_DESCR_DEFINE(p, instance) \
+	static __in_section(usb, descriptor_##p.1, instance) __used __aligned(1)
 #define USBD_MISC_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 2) __used
+	static __in_section(usb, descriptor_##p, 2) __used __aligned(1)
 #define USBD_USER_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 3) __used
+	static __in_section(usb, descriptor_##p, 3) __used __aligned(1)
 #define USBD_STRING_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 4) __used
+	static __in_section(usb, descriptor_##p, 4) __used __aligned(1)
 #define USBD_TERM_DESCR_DEFINE(p) \
-	static __in_section(usb, descriptor_##p, 5) __used
+	static __in_section(usb, descriptor_##p, 5) __used __aligned(1)
 
 /*
  * This macro should be used to place the struct usb_cfg_data
  * inside usb data section in the RAM.
  */
-#define USBD_CFG_DATA_DEFINE(name) \
-	static __in_section(usb, data, name) __used
+#define USBD_CFG_DATA_DEFINE(p, name) \
+	static __in_section(usb, data_##p, name) __used
 
 /*************************************************************************
  *  USB configuration
  **************************************************************************/
 
-#define MAX_PACKET_SIZE0    64        /**< maximum packet size for EP 0 */
+#define USB_MAX_CTRL_MPS	64   /**< maximum packet size (MPS) for EP 0 */
+#define USB_MAX_FS_BULK_MPS	64   /**< full speed MPS for bulk EP */
+#define USB_MAX_FS_INT_MPS	64   /**< full speed MPS for interrupt EP */
+#define USB_MAX_FS_ISO_MPS	1023 /**< full speed MPS for isochronous EP */
 
 /*************************************************************************
  *  USB application interface
@@ -91,12 +95,6 @@ struct usb_setup_packet {
  * @defgroup _usb_device_core_api USB Device Core API
  * @{
  */
-
-/**
- * @brief Callback function signature for the device
- */
-typedef void (*usb_status_callback)(enum usb_dc_status_code status_code,
-				    u8_t *param);
 
 /**
  * @brief Callback function signature for the USB Endpoint status
@@ -121,7 +119,8 @@ typedef int (*usb_request_handler)(struct usb_setup_packet *setup,
 /**
  * @brief Function for interface runtime configuration
  */
-typedef void (*usb_interface_config)(u8_t bInterfaceNumber);
+typedef void (*usb_interface_config)(struct usb_desc_header *head,
+				     u8_t bInterfaceNumber);
 
 /**
  * @brief USB Endpoint Configuration
@@ -160,19 +159,6 @@ struct usb_interface_cfg_data {
 	 * handler.
 	 */
 	usb_request_handler custom_handler;
-	/**
-	 * This data area, allocated by the application, is used to store
-	 * Class specific command data and must be large enough to store the
-	 * largest payload associated with the largest supported Class'
-	 * command set. This data area may be used for USB IN or OUT
-	 * communications.
-	 */
-	u8_t *payload_data;
-	/**
-	 * This data area, allocated by the application, is used to store
-	 * Vendor specific payload.
-	 */
-	u8_t *vendor_data;
 };
 
 /**
@@ -180,7 +166,7 @@ struct usb_interface_cfg_data {
  *
  * The Application instantiates this with given parameters added
  * using the "usb_set_config" function. Once this function is called
- * changes to this structure will result in undefined behaviour. This structure
+ * changes to this structure will result in undefined behavior. This structure
  * may only be updated after calls to usb_deconfig
  */
 struct usb_cfg_data {
@@ -194,7 +180,9 @@ struct usb_cfg_data {
 	/** Function for interface runtime configuration */
 	usb_interface_config interface_config;
 	/** Callback to be notified on USB connection status change */
-	usb_status_callback cb_usb_status;
+	void (*cb_usb_status)(struct usb_cfg_data *cfg,
+			      enum usb_dc_status_code cb_status,
+			      const u8_t *param);
 	/** USB interface (Class) handler and storage space */
 	struct usb_interface_cfg_data interface;
 	/** Number of individual endpoints in the device configuration */
@@ -213,11 +201,11 @@ struct usb_cfg_data {
  * Function to configure USB controller.
  * Configuration parameters must be valid or an error is returned
  *
- * @param[in] config Pointer to configuration structure
+ * @param[in] usb_descriptor USB descriptor table
  *
  * @return 0 on success, negative errno code on fail
  */
-int usb_set_config(struct usb_cfg_data *config);
+int usb_set_config(const u8_t *usb_descriptor);
 
 /**
  * @brief Deconfigure USB controller
@@ -236,11 +224,9 @@ int usb_deconfig(void);
  * it is now capable of transmitting and receiving on the USB bus and
  * of generating interrupts.
  *
- * @param[in] config Pointer to configuration structure
- *
  * @return 0 on success, negative errno code on fail.
  */
-int usb_enable(struct usb_cfg_data *config);
+int usb_enable(void);
 
 /**
  * @brief Disable the USB device
@@ -294,7 +280,7 @@ int usb_read(u8_t ep, u8_t *data, u32_t max_data_len, u32_t *ret_bytes);
  * @brief Set STALL condition on the specified endpoint
  *
  * This function is called by USB device class handler code to set stall
- * conditionin on endpoint.
+ * condition on endpoint.
  *
  * @param[in]  ep           Endpoint address corresponding to the one listed in
  *                          the device configuration table
@@ -307,7 +293,7 @@ int usb_ep_set_stall(u8_t ep);
  * @brief Clears STALL condition on the specified endpoint
  *
  * This function is called by USB device class handler code to clear stall
- * conditionin on endpoint.
+ * condition on endpoint.
  *
  * @param[in]  ep           Endpoint address corresponding to the one listed in
  *                          the device configuration table
@@ -418,6 +404,33 @@ int usb_transfer_sync(u8_t ep, u8_t *data, size_t dlen, unsigned int flags);
 void usb_cancel_transfer(u8_t ep);
 
 /**
+ * @brief Cancel all ongoing transfers
+ */
+void usb_cancel_transfers(void);
+
+/**
+ * @brief Check that transfer is ongoing for the endpoint
+ *
+ * @param[in]  ep           Endpoint address corresponding to the one
+ *                          listed in the device configuration table
+ *
+ * @return true if transfer is ongoing, false otherwise.
+ */
+bool usb_transfer_is_busy(u8_t ep);
+
+/**
+ * @brief Start the USB remote wakeup procedure
+ *
+ * Function to request a remote wakeup.
+ * This feature must be enabled in configuration, otherwise
+ * it will always return -ENOTSUP error.
+ *
+ * @return 0 on success, negative errno code on fail,
+ *         i.e. when the bus is already active.
+ */
+int usb_wakeup_request(void);
+
+/**
  * @}
  */
 
@@ -425,4 +438,4 @@ void usb_cancel_transfer(u8_t ep);
 }
 #endif
 
-#endif /* USB_DEVICE_H_ */
+#endif /* ZEPHYR_INCLUDE_USB_USB_DEVICE_H_ */

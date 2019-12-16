@@ -6,24 +6,26 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define LOG_MODULE_NAME net_buf
+#define LOG_LEVEL CONFIG_NET_BUF_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #include <stdio.h>
 #include <errno.h>
 #include <stddef.h>
 #include <string.h>
-#include <misc/byteorder.h>
+#include <sys/byteorder.h>
 
 #include <net/buf.h>
 
 #if defined(CONFIG_NET_BUF_LOG)
-#define SYS_LOG_DOMAIN "net/buf"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_NET_BUF_LEVEL
-#include <logging/sys_log.h>
-
-#define NET_BUF_DBG(fmt, ...) SYS_LOG_DBG("(%p) " fmt, k_current_get(), \
-					  ##__VA_ARGS__)
-#define NET_BUF_ERR(fmt, ...) SYS_LOG_ERR(fmt, ##__VA_ARGS__)
-#define NET_BUF_WARN(fmt, ...) SYS_LOG_WRN(fmt,	##__VA_ARGS__)
-#define NET_BUF_INFO(fmt, ...) SYS_LOG_INF(fmt,  ##__VA_ARGS__)
+#define NET_BUF_DBG(fmt, ...) LOG_DBG("(%p) " fmt, k_current_get(), \
+				      ##__VA_ARGS__)
+#define NET_BUF_ERR(fmt, ...) LOG_ERR(fmt, ##__VA_ARGS__)
+#define NET_BUF_WARN(fmt, ...) LOG_WRN(fmt, ##__VA_ARGS__)
+#define NET_BUF_INFO(fmt, ...) LOG_INF(fmt, ##__VA_ARGS__)
 #define NET_BUF_ASSERT(cond) do { if (!(cond)) {			  \
 			NET_BUF_ERR("assert: '" #cond "' failed"); \
 		} } while (0)
@@ -76,7 +78,7 @@ static inline struct net_buf *pool_get_uninit(struct net_buf_pool *pool,
 
 void net_buf_reset(struct net_buf *buf)
 {
-	NET_BUF_ASSERT(buf->flags == 0);
+	NET_BUF_ASSERT(buf->flags == 0U);
 	NET_BUF_ASSERT(buf->frags == NULL);
 
 	net_buf_simple_reset(&buf->b);
@@ -111,7 +113,7 @@ static u8_t *mem_pool_data_alloc(struct net_buf *buf, size_t *size,
 	memcpy(block.data, &block.id, sizeof(block.id));
 
 	ref_count = (u8_t *)block.data + sizeof(block.id);
-	*ref_count = 1;
+	*ref_count = 1U;
 
 	/* Return pointer to the byte following the ref count */
 	return ref_count + 1;
@@ -143,7 +145,7 @@ static u8_t *fixed_data_alloc(struct net_buf *buf, size_t *size, s32_t timeout)
 	struct net_buf_pool *pool = net_buf_pool_get(buf->pool_id);
 	const struct net_buf_pool_fixed *fixed = pool->alloc->alloc_data;
 
-	*size = min(fixed->data_size, *size);
+	*size = MIN(fixed->data_size, *size);
 
 	return fixed->data_pool + fixed->data_size * net_buf_id(buf);
 }
@@ -169,7 +171,7 @@ static u8_t *heap_data_alloc(struct net_buf *buf, size_t *size, s32_t timeout)
 		return NULL;
 	}
 
-	*ref_count = 1;
+	*ref_count = 1U;
 
 	return ref_count + 1;
 }
@@ -273,7 +275,7 @@ struct net_buf *net_buf_alloc_len(struct net_buf_pool *pool, size_t size,
 
 	irq_unlock(key);
 
-#if defined(CONFIG_NET_BUF_LOG) && SYS_LOG_LEVEL >= SYS_LOG_LEVEL_WARNING
+#if defined(CONFIG_NET_BUF_LOG) && (CONFIG_NET_BUF_LOG_LEVEL >= LOG_LEVEL_WRN)
 	if (timeout == K_FOREVER) {
 		u32_t ref = k_uptime_get_32();
 		buf = k_lifo_get(&pool->free, K_NO_WAIT);
@@ -314,7 +316,7 @@ success:
 		if (timeout != K_NO_WAIT && timeout != K_FOREVER) {
 			u32_t diff = k_uptime_get_32() - alloc_start;
 
-			timeout -= min(timeout, diff);
+			timeout -= MIN(timeout, diff);
 		}
 
 		buf->__buf = data_alloc(buf, &size, timeout);
@@ -328,8 +330,8 @@ success:
 		buf->__buf = NULL;
 	}
 
-	buf->ref   = 1;
-	buf->flags = 0;
+	buf->ref   = 1U;
+	buf->flags = 0U;
 	buf->frags = NULL;
 	buf->size  = size;
 	net_buf_reset(buf);
@@ -383,10 +385,7 @@ struct net_buf *net_buf_alloc_with_data(struct net_buf_pool *pool,
 		return NULL;
 	}
 
-	buf->__buf = data;
-	buf->data  = data;
-	buf->size  = size;
-	buf->len   = size;
+	net_buf_simple_init_with_data(&buf->b, data, size);
 	buf->flags = NET_BUF_EXTERNAL_DATA;
 
 	return buf;
@@ -425,10 +424,19 @@ struct net_buf *net_buf_get(struct k_fifo *fifo, s32_t timeout)
 	return buf;
 }
 
+void net_buf_simple_init_with_data(struct net_buf_simple *buf,
+				   void *data, size_t size)
+{
+	buf->__buf = data;
+	buf->data  = data;
+	buf->size  = size;
+	buf->len   = size;
+}
+
 void net_buf_simple_reserve(struct net_buf_simple *buf, size_t reserve)
 {
 	NET_BUF_ASSERT(buf);
-	NET_BUF_ASSERT(buf->len == 0);
+	NET_BUF_ASSERT(buf->len == 0U);
 	NET_BUF_DBG("buf %p reserve %zu", buf, reserve);
 
 	buf->data = buf->__buf + reserve;
@@ -588,7 +596,7 @@ struct net_buf *net_buf_clone(struct net_buf *buf, s32_t timeout)
 		if (timeout != K_NO_WAIT && timeout != K_FOREVER) {
 			u32_t diff = k_uptime_get_32() - alloc_start;
 
-			timeout -= min(timeout, diff);
+			timeout -= MIN(timeout, diff);
 		}
 
 		clone->__buf = data_alloc(clone, &size, timeout);
@@ -672,21 +680,16 @@ struct net_buf *net_buf_frag_del(struct net_buf *parent, struct net_buf *frag)
 	return next_frag;
 }
 
-int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
-		      size_t offset, size_t len)
+size_t net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
+			 size_t offset, size_t len)
 {
 	struct net_buf *frag;
 	size_t to_copy;
 	size_t copied;
 
-	if (dst_len < (size_t)len) {
-		return -ENOMEM;
-	}
+	len = MIN(len, dst_len);
 
 	frag = src;
-
-	/* clear dst */
-	memset(dst, 0, dst_len);
 
 	/* find the right fragment to start copying from */
 	while (frag && offset >= frag->len) {
@@ -697,8 +700,8 @@ int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
 	/* traverse the fragment chain until len bytes are copied */
 	copied = 0;
 	while (frag && len > 0) {
-		to_copy = min(len, frag->len - offset);
-		memcpy(dst + copied, frag->data + offset, to_copy);
+		to_copy = MIN(len, frag->len - offset);
+		memcpy((u8_t *)dst + copied, frag->data + offset, to_copy);
 
 		copied += to_copy;
 
@@ -708,10 +711,6 @@ int net_buf_linearize(void *dst, size_t dst_len, struct net_buf *src,
 
 		/* after the first iteration, this value will be 0 */
 		offset = 0;
-	}
-
-	if (len > 0) {
-		return -ENOMEM;
 	}
 
 	return copied;
@@ -727,15 +726,15 @@ size_t net_buf_append_bytes(struct net_buf *buf, size_t len,
 {
 	struct net_buf *frag = net_buf_frag_last(buf);
 	size_t added_len = 0;
+	const u8_t *value8 = value;
 
 	do {
-		u16_t count = min(len, net_buf_tailroom(frag));
-		void *data = net_buf_add(frag, count);
+		u16_t count = MIN(len, net_buf_tailroom(frag));
 
-		memcpy(data, value, count);
+		net_buf_add_mem(frag, value8, count);
 		len -= count;
 		added_len += count;
-		value += count;
+		value8 += count;
 
 		if (len == 0) {
 			return added_len;
@@ -766,6 +765,12 @@ size_t net_buf_append_bytes(struct net_buf *buf, size_t len,
 #define NET_BUF_SIMPLE_INFO(fmt, ...)
 #define NET_BUF_SIMPLE_ASSERT(cond)
 #endif /* CONFIG_NET_BUF_SIMPLE_LOG */
+
+void net_buf_simple_clone(const struct net_buf_simple *original,
+			  struct net_buf_simple *clone)
+{
+	memcpy(clone, original, sizeof(struct net_buf_simple));
+}
 
 void *net_buf_simple_add(struct net_buf_simple *buf, size_t len)
 {
@@ -803,32 +808,70 @@ void net_buf_simple_add_le16(struct net_buf_simple *buf, u16_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_le16(val);
-	memcpy(net_buf_simple_add(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_le16(val, net_buf_simple_add(buf, sizeof(val)));
 }
 
 void net_buf_simple_add_be16(struct net_buf_simple *buf, u16_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_be16(val);
-	memcpy(net_buf_simple_add(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_be16(val, net_buf_simple_add(buf, sizeof(val)));
+}
+
+void net_buf_simple_add_le24(struct net_buf_simple *buf, u32_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
+
+	sys_put_le24(val, net_buf_simple_add(buf, 3));
+}
+
+void net_buf_simple_add_be24(struct net_buf_simple *buf, u32_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
+
+	sys_put_be24(val, net_buf_simple_add(buf, 3));
 }
 
 void net_buf_simple_add_le32(struct net_buf_simple *buf, u32_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_le32(val);
-	memcpy(net_buf_simple_add(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_le32(val, net_buf_simple_add(buf, sizeof(val)));
 }
 
 void net_buf_simple_add_be32(struct net_buf_simple *buf, u32_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_be32(val);
-	memcpy(net_buf_simple_add(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_be32(val, net_buf_simple_add(buf, sizeof(val)));
+}
+
+void net_buf_simple_add_le48(struct net_buf_simple *buf, u64_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %" PRIu64, buf, val);
+
+	sys_put_le48(val, net_buf_simple_add(buf, 6));
+}
+
+void net_buf_simple_add_be48(struct net_buf_simple *buf, u64_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %" PRIu64, buf, val);
+
+	sys_put_be48(val, net_buf_simple_add(buf, 6));
+}
+
+void net_buf_simple_add_le64(struct net_buf_simple *buf, u64_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %" PRIu64, buf, val);
+
+	sys_put_le64(val, net_buf_simple_add(buf, sizeof(val)));
+}
+
+void net_buf_simple_add_be64(struct net_buf_simple *buf, u64_t val)
+{
+	NET_BUF_SIMPLE_DBG("buf %p val %" PRIu64, buf, val);
+
+	sys_put_be64(val, net_buf_simple_add(buf, sizeof(val)));
 }
 
 void *net_buf_simple_push(struct net_buf_simple *buf, size_t len)
@@ -846,16 +889,14 @@ void net_buf_simple_push_le16(struct net_buf_simple *buf, u16_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_le16(val);
-	memcpy(net_buf_simple_push(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_le16(val, net_buf_simple_push(buf, sizeof(val)));
 }
 
 void net_buf_simple_push_be16(struct net_buf_simple *buf, u16_t val)
 {
 	NET_BUF_SIMPLE_DBG("buf %p val %u", buf, val);
 
-	val = sys_cpu_to_be16(val);
-	memcpy(net_buf_simple_push(buf, sizeof(val)), &val, sizeof(val));
+	sys_put_be16(val, net_buf_simple_push(buf, sizeof(val)));
 }
 
 void net_buf_simple_push_u8(struct net_buf_simple *buf, u8_t val)
@@ -873,6 +914,20 @@ void *net_buf_simple_pull(struct net_buf_simple *buf, size_t len)
 
 	buf->len -= len;
 	return buf->data += len;
+}
+
+void *net_buf_simple_pull_mem(struct net_buf_simple *buf, size_t len)
+{
+	void *data = buf->data;
+
+	NET_BUF_SIMPLE_DBG("buf %p len %zu", buf, len);
+
+	NET_BUF_SIMPLE_ASSERT(buf->len >= len);
+
+	buf->len -= len;
+	buf->data += len;
+
+	return data;
 }
 
 u8_t net_buf_simple_pull_u8(struct net_buf_simple *buf)
@@ -905,6 +960,30 @@ u16_t net_buf_simple_pull_be16(struct net_buf_simple *buf)
 	return sys_be16_to_cpu(val);
 }
 
+u32_t net_buf_simple_pull_le24(struct net_buf_simple *buf)
+{
+	struct uint24 {
+		u32_t u24:24;
+	} __packed val;
+
+	val = UNALIGNED_GET((struct uint24 *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_le24_to_cpu(val.u24);
+}
+
+u32_t net_buf_simple_pull_be24(struct net_buf_simple *buf)
+{
+	struct uint24 {
+		u32_t u24:24;
+	} __packed val;
+
+	val = UNALIGNED_GET((struct uint24 *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_be24_to_cpu(val.u24);
+}
+
 u32_t net_buf_simple_pull_le32(struct net_buf_simple *buf)
 {
 	u32_t val;
@@ -923,6 +1002,50 @@ u32_t net_buf_simple_pull_be32(struct net_buf_simple *buf)
 	net_buf_simple_pull(buf, sizeof(val));
 
 	return sys_be32_to_cpu(val);
+}
+
+u64_t net_buf_simple_pull_le48(struct net_buf_simple *buf)
+{
+	struct uint48 {
+		u64_t u48:48;
+	} __packed val;
+
+	val = UNALIGNED_GET((struct uint48 *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_le48_to_cpu(val.u48);
+}
+
+u64_t net_buf_simple_pull_be48(struct net_buf_simple *buf)
+{
+	struct uint48 {
+		u64_t u48:48;
+	} __packed val;
+
+	val = UNALIGNED_GET((struct uint48 *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_be48_to_cpu(val.u48);
+}
+
+u64_t net_buf_simple_pull_le64(struct net_buf_simple *buf)
+{
+	u64_t val;
+
+	val = UNALIGNED_GET((u64_t *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_le64_to_cpu(val);
+}
+
+u64_t net_buf_simple_pull_be64(struct net_buf_simple *buf)
+{
+	u64_t val;
+
+	val = UNALIGNED_GET((u64_t *)buf->data);
+	net_buf_simple_pull(buf, sizeof(val));
+
+	return sys_be64_to_cpu(val);
 }
 
 size_t net_buf_simple_headroom(struct net_buf_simple *buf)
